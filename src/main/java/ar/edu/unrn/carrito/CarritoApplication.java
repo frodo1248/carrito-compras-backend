@@ -4,7 +4,6 @@ import ar.edu.unrn.carrito.model.Carrito;
 import ar.edu.unrn.carrito.model.ItemCarrito;
 import ar.edu.unrn.carrito.model.Pelicula;
 import ar.edu.unrn.carrito.service.CarritoService;
-import ar.edu.unrn.carrito.service.CatalogoClient;
 import ar.edu.unrn.carrito.utils.EmfBuilder;
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.boot.SpringApplication;
@@ -42,7 +41,7 @@ public class CarritoApplication {
     }
 
     @Bean
-    public CarritoService carritoService(EntityManagerFactory emf, CatalogoClient catalogoClient) {
-        return new CarritoService(emf, catalogoClient);
+    public CarritoService carritoService(EntityManagerFactory emf) {
+        return new CarritoService(emf);
     }
 }

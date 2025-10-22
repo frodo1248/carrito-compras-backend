@@ -13,13 +13,10 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
 class CarritoServiceIntegracionTest {
 
     private EntityManagerFactory emf;
     private CarritoService carritoService;
-    private CatalogoClient catalogoClientMock;
 
     @BeforeEach
     void setUp() {
@@ -32,8 +29,7 @@ class CarritoServiceIntegracionTest {
         // Limpiar base de datos antes de cada test
         emf.getSchemaManager().truncate();
 
-        catalogoClientMock = mock(CatalogoClient.class);
-        carritoService = new CarritoService(emf, catalogoClientMock);
+        carritoService = new CarritoService(emf);
     }
 
     @Test
@@ -44,11 +40,14 @@ class CarritoServiceIntegracionTest {
         String nombrePelicula = "Avatar";
         BigDecimal precio = new BigDecimal("15.99");
 
-        CatalogoClient.PeliculaCatalogoInfo peliculaInfo =
-            new CatalogoClient.PeliculaCatalogoInfo(peliculaId, nombrePelicula, precio);
-
-        when(catalogoClientMock.obtenerPelicula(peliculaId))
-            .thenReturn(Optional.of(peliculaInfo));
+        // Crear película en la base de datos
+        try (var em = emf.createEntityManager()) {
+            var transaction = em.getTransaction();
+            transaction.begin();
+            Pelicula pelicula = new Pelicula(peliculaId, nombrePelicula, precio);
+            em.persist(pelicula);
+            transaction.commit();
+        }
 
         // Ejercitación: Ejecutar la acción a probar
         CarritoInfo resultado = carritoService.agregarPeliculaDesdeCatalogo(peliculaId);
@@ -57,26 +56,21 @@ class CarritoServiceIntegracionTest {
         assertNotNull(resultado, "El resultado no debe ser nulo");
         assertEquals(1, resultado.cantidadItems(), "Debe haber un item en el carrito");
         assertEquals(precio, resultado.total(), "El total debe coincidir con el precio de la película");
-        verify(catalogoClientMock).obtenerPelicula(peliculaId);
     }
 
     @Test
     @DisplayName("AgregarPeliculaDesdeCatalogo con película inexistente lanza excepción")
     void agregarPeliculaDesdeCatalogo_peliculaInexistente_lanzaExcepcion() {
-        // Setup: Preparar el escenario
+        // Setup: Preparar el escenario - no creamos ninguna película en la BD
         Long peliculaIdInexistente = 999L;
-
-        when(catalogoClientMock.obtenerPelicula(peliculaIdInexistente))
-            .thenReturn(Optional.empty());
 
         // Ejercitación y Verificación: Ejecutar la acción y verificar la excepción
         RuntimeException ex = assertThrows(RuntimeException.class, () -> {
             carritoService.agregarPeliculaDesdeCatalogo(peliculaIdInexistente);
         });
 
-        assertEquals("Película no encontrada en el catálogo", ex.getMessage(),
+        assertEquals(CarritoService.ERROR_PELICULA_NO_ENCONTRADA, ex.getMessage(),
             "El mensaje de error debe ser el esperado");
-        verify(catalogoClientMock).obtenerPelicula(peliculaIdInexistente);
     }
 
     @Test
@@ -87,11 +81,14 @@ class CarritoServiceIntegracionTest {
         String nombrePelicula = "Avatar";
         BigDecimal precio = new BigDecimal("15.99");
 
-        CatalogoClient.PeliculaCatalogoInfo peliculaInfo =
-            new CatalogoClient.PeliculaCatalogoInfo(peliculaId, nombrePelicula, precio);
-
-        when(catalogoClientMock.obtenerPelicula(peliculaId))
-            .thenReturn(Optional.of(peliculaInfo));
+        // Crear película en la base de datos
+        try (var em = emf.createEntityManager()) {
+            var transaction = em.getTransaction();
+            transaction.begin();
+            Pelicula pelicula = new Pelicula(peliculaId, nombrePelicula, precio);
+            em.persist(pelicula);
+            transaction.commit();
+        }
 
         // Ejercitación: Ejecutar la acción a probar múltiples veces
         carritoService.agregarPeliculaDesdeCatalogo(peliculaId);
@@ -101,6 +98,5 @@ class CarritoServiceIntegracionTest {
         assertEquals(2, resultado.cantidadItems(), "Debe haber dos items en el carrito");
         assertEquals(precio.multiply(BigDecimal.valueOf(2)), resultado.total(),
             "El total debe ser el precio multiplicado por 2");
-        verify(catalogoClientMock, times(2)).obtenerPelicula(peliculaId);
     }
 }

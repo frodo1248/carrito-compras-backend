@@ -3,17 +3,19 @@ package ar.edu.unrn.carrito.service;
 import ar.edu.unrn.carrito.model.Carrito;
 import ar.edu.unrn.carrito.model.Pelicula;
 import ar.edu.unrn.carrito.web.CarritoDetalle;
+import ar.edu.unrn.carrito.web.CarritoInfo;
 import jakarta.persistence.EntityManagerFactory;
 
 import java.util.Optional;
 
 public class CarritoService {
     private final EntityManagerFactory emf;
-    private final CatalogoClient catalogoClient;
 
-    public CarritoService(EntityManagerFactory emf, CatalogoClient catalogoClient) {
+    // Mensaje de error usado en tests (visibilidad de paquete)
+    static final String ERROR_PELICULA_NO_ENCONTRADA = "Película no encontrada en la base de datos";
+
+    public CarritoService(EntityManagerFactory emf) {
         this.emf = emf;
-        this.catalogoClient = catalogoClient;
     }
 
     // Obtener el carrito activo (para simplicidad, el primer carrito disponible)
@@ -48,8 +50,8 @@ public class CarritoService {
         }
     }
 
-    // Agregar película al carrito desde la BD local
-    public void agregarPeliculaDesdeCatalogo(Long peliculaId) {
+    // Agregar película al carrito desde la base de datos local y devolver información del carrito
+    public CarritoInfo agregarPeliculaDesdeCatalogo(Long peliculaId) {
         try (var em = emf.createEntityManager()) {
             var transaction = em.getTransaction();
             transaction.begin();
@@ -57,18 +59,24 @@ public class CarritoService {
                 // Buscar la película en la BD local
                 Pelicula pelicula = em.find(Pelicula.class, peliculaId);
                 if (pelicula == null) {
-                    throw new RuntimeException("Película no encontrada");
+                    throw new RuntimeException(ERROR_PELICULA_NO_ENCONTRADA);
                 }
 
                 // Buscar o crear un carrito activo
                 Carrito carrito = obtenerOCrearCarritoActivo(em);
 
                 carrito.agregarPelicula(pelicula, 1); // Cantidad por defecto = 1
+                // Si el carrito es nuevo fue persistido en obtenerOCrearCarritoActivo; si no, merge
                 em.merge(carrito);
                 transaction.commit();
-            } catch (Exception e) {
+
+                return carrito.toCarritoInfo();
+            } catch (RuntimeException e) {
                 transaction.rollback();
                 throw e;
+            } catch (Exception e) {
+                transaction.rollback();
+                throw new RuntimeException(e);
             }
         }
     }
