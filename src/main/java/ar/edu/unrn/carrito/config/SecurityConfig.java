@@ -55,19 +55,15 @@ public class SecurityConfig {
         // Crear un converter personalizado que puede manejar la estructura anidada de Keycloak
         JwtAuthenticationConverter authenticationConverter = new JwtAuthenticationConverter();
         authenticationConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            logger.info("🔍 Procesando JWT para extraer roles...");
-            logger.info("Claims del JWT: {}", jwt.getClaims().keySet());
-
             // Intentar extraer desde realm_access.roles
             var realmAccess = jwt.getClaimAsMap("realm_access");
             if (realmAccess != null && realmAccess.containsKey("roles")) {
                 var roles = (java.util.List<String>) realmAccess.get("roles");
-                logger.info("✅ Roles encontrados en realm_access: {}", roles);
+                logger.debug("Roles encontrados en realm_access: {}", roles);
                 return roles.stream()
                         .map(role -> {
                             // Si el rol ya tiene el prefijo ROLE_, no lo duplicamos
                             String finalRole = role.startsWith("ROLE_") ? role : "ROLE_" + role;
-                            logger.info("🔑 Mapeando rol: {} -> {}", role, finalRole);
                             return new org.springframework.security.core.authority.SimpleGrantedAuthority(finalRole);
                         })
                         .collect(java.util.stream.Collectors.toList());
@@ -79,12 +75,11 @@ public class SecurityConfig {
                 var clientAccess = (java.util.Map<String, Object>) resourceAccess.get("test-api");
                 if (clientAccess != null && clientAccess.containsKey("roles")) {
                     var roles = (java.util.List<String>) clientAccess.get("roles");
-                    logger.info("✅ Roles encontrados en resource_access.test-api: {}", roles);
+                    logger.debug("Roles encontrados en resource_access.test-api: {}", roles);
                     return roles.stream()
                             .map(role -> {
                                 // Si el rol ya tiene el prefijo ROLE_, no lo duplicamos
                                 String finalRole = role.startsWith("ROLE_") ? role : "ROLE_" + role;
-                                logger.info("🔑 Mapeando rol: {} -> {}", role, finalRole);
                                 return new org.springframework.security.core.authority.SimpleGrantedAuthority(finalRole);
                             })
                             .collect(java.util.stream.Collectors.toList());
@@ -92,9 +87,7 @@ public class SecurityConfig {
             }
 
             // Si no encuentra roles, devolver lista vacía
-            logger.warn("❌ No se encontraron roles en el JWT");
-            logger.warn("realm_access disponible: {}", realmAccess);
-            logger.warn("resource_access disponible: {}", resourceAccess);
+            logger.warn("No se encontraron roles válidos en el JWT");
             return java.util.Collections.emptyList();
         });
 
