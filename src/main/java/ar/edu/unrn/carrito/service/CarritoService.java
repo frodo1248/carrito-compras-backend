@@ -96,4 +96,33 @@ public class CarritoService {
         em.persist(nuevoCarrito);
         return nuevoCarrito;
     }
+
+    // Agregar película al catálogo desde un mensaje de RabbitMQ
+    public void agregarPeliculaAlCatalogo(Long id, String nombre, double precio) {
+        try (var em = emf.createEntityManager()) {
+            var transaction = em.getTransaction();
+            transaction.begin();
+            try {
+                // Verificar si la película ya existe
+                Pelicula peliculaExistente = em.find(Pelicula.class, id);
+                if (peliculaExistente != null) {
+                    // Si ya existe, no hacer nada (o actualizar si es necesario)
+                    transaction.rollback();
+                    return;
+                }
+
+                // Crear la nueva película con BigDecimal
+                Pelicula nuevaPelicula = new Pelicula(
+                    id,
+                    nombre,
+                    java.math.BigDecimal.valueOf(precio)
+                );
+                em.persist(nuevaPelicula);
+                transaction.commit();
+            } catch (Exception e) {
+                transaction.rollback();
+                throw new RuntimeException("Error al agregar película al catálogo: " + e.getMessage(), e);
+            }
+        }
+    }
 }
