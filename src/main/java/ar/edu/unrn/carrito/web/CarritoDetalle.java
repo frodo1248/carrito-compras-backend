@@ -6,6 +6,7 @@ import java.util.List;
 
 public record CarritoDetalle(
         Long id,
+        String usuarioId,
         List<ItemCarritoInfo> items,
         Integer cantidadItems,
         BigDecimal total,

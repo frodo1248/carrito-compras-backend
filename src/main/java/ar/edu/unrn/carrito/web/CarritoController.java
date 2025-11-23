@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
-@RequestMapping("/carrito")
+@RequestMapping("/")
 public class CarritoController {
     private final CarritoService carritoService;
 
@@ -20,20 +20,19 @@ public class CarritoController {
 
     @GetMapping
     public CarritoDetalle obtenerCarrito(@AuthenticationPrincipal Jwt jwt) {
-        // Opcional: puedes extraer información del usuario
-        // String username = jwt.getClaimAsString("preferred_username");
-        // String email = jwt.getClaimAsString("email");
+        // Extraer el ID del usuario desde el JWT (usando el 'sub' que es el identificador único)
+        String usuarioId = jwt.getSubject();
 
-        return carritoService.obtenerCarrito()
-                .orElseGet(() -> carritoService.crearCarritoVacio());
+        return carritoService.obtenerCarrito(usuarioId)
+                .orElseGet(() -> carritoService.crearCarritoVacio(usuarioId));
     }
 
     @PostMapping("/agregar/{peliculaId}")
     public CarritoInfo agregarPeliculaDesdeCatalogo(@PathVariable Long peliculaId,
                                                    @AuthenticationPrincipal Jwt jwt) {
-        // Opcional: puedes extraer información del usuario
-        // String username = jwt.getClaimAsString("preferred_username");
+        // Extraer el ID del usuario desde el JWT (usando el 'sub' que es el identificador único)
+        String usuarioId = jwt.getSubject();
 
-        return carritoService.agregarPeliculaDesdeCatalogo(peliculaId);
+        return carritoService.agregarPeliculaDesdeCatalogo(peliculaId, usuarioId);
     }
 }

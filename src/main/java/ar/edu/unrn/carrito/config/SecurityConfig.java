@@ -35,7 +35,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         // Endpoints del carrito - requieren estar autenticado con ROLE_ADMIN o ROLE_CLIENT
-                        .requestMatchers("/carrito/**").hasAnyRole("ADMIN", "CLIENT")
+                        .requestMatchers("/**").hasAnyRole("ADMIN", "CLIENT")
                         // Todos los demás endpoints requieren autenticación
                         .anyRequest().authenticated()
                 )

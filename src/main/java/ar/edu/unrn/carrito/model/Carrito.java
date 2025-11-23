@@ -22,10 +22,14 @@ public class Carrito {
     static final String ERROR_CARRITO_VACIO = "No se puede procesar un carrito vacío";
     static final String ERROR_PELICULA_NULA = "La película no puede ser nula";
     static final String ERROR_CANTIDAD_INVALIDA = "La cantidad debe ser mayor a cero";
+    static final String ERROR_USUARIO_ID_NULO = "El ID de usuario no puede ser nulo";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "usuario_id", nullable = false)
+    private String usuarioId;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @JoinColumn(name = "carrito_id")
@@ -37,9 +41,21 @@ public class Carrito {
     @Column(name = "fecha_modificacion")
     private LocalDateTime fechaModificacion = LocalDateTime.now();
 
-    // Constructor público para que el servicio pueda crear carritos
-    public Carrito() {
+    // Constructor protegido para JPA
+    protected Carrito() {
         // Los campos ya se inicializan con sus valores por defecto
+    }
+
+    // Constructor público para que el servicio pueda crear carritos
+    public Carrito(String usuarioId) {
+        assertUsuarioIdNoNulo(usuarioId);
+        this.usuarioId = usuarioId;
+    }
+
+    private void assertUsuarioIdNoNulo(String usuarioId) {
+        if (usuarioId == null || usuarioId.isBlank()) {
+            throw new RuntimeException(ERROR_USUARIO_ID_NULO);
+        }
     }
 
     public void agregarPelicula(Pelicula pelicula, Integer cantidad) {
@@ -107,10 +123,15 @@ public class Carrito {
         return Collections.unmodifiableList(itemsPrivados);
     }
 
+    public String usuarioId() {
+        return usuarioId;
+    }
+
     // Métodos para mapear a DTOs siguiendo el patrón del catálogo
     public CarritoInfo toCarritoInfo() {
         return new CarritoInfo(
                 id,
+                usuarioId,
                 cantidadTotalItems(),
                 calcularTotal()
         );
@@ -123,6 +144,7 @@ public class Carrito {
 
         return new CarritoDetalle(
                 id,
+                usuarioId,
                 itemsInfo,
                 cantidadTotalItems(),
                 calcularTotal(),

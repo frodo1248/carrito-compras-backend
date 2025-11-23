@@ -18,10 +18,11 @@ public class CarritoService {
         this.emf = emf;
     }
 
-    // Obtener el carrito activo (para simplicidad, el primer carrito disponible)
-    public Optional<CarritoDetalle> obtenerCarrito() {
+    // Obtener el carrito activo de un usuario específico
+    public Optional<CarritoDetalle> obtenerCarrito(String usuarioId) {
         try (var em = emf.createEntityManager()) {
-            var carritos = em.createQuery("FROM Carrito ORDER BY fechaCreacion DESC", Carrito.class)
+            var carritos = em.createQuery("FROM Carrito WHERE usuarioId = :usuarioId ORDER BY fechaCreacion DESC", Carrito.class)
+                .setParameter("usuarioId", usuarioId)
                 .setMaxResults(1)
                 .getResultList();
 
@@ -33,13 +34,13 @@ public class CarritoService {
         }
     }
 
-    // Crear un carrito vacío cuando no existe ninguno
-    public CarritoDetalle crearCarritoVacio() {
+    // Crear un carrito vacío cuando no existe ninguno para el usuario
+    public CarritoDetalle crearCarritoVacio(String usuarioId) {
         try (var em = emf.createEntityManager()) {
             var transaction = em.getTransaction();
             transaction.begin();
             try {
-                Carrito nuevoCarrito = new Carrito();
+                Carrito nuevoCarrito = new Carrito(usuarioId);
                 em.persist(nuevoCarrito);
                 transaction.commit();
                 return nuevoCarrito.toCarritoDetalle();
@@ -51,7 +52,7 @@ public class CarritoService {
     }
 
     // Agregar película al carrito desde la base de datos local y devolver información del carrito
-    public CarritoInfo agregarPeliculaDesdeCatalogo(Long peliculaId) {
+    public CarritoInfo agregarPeliculaDesdeCatalogo(Long peliculaId, String usuarioId) {
         try (var em = emf.createEntityManager()) {
             var transaction = em.getTransaction();
             transaction.begin();
@@ -62,8 +63,8 @@ public class CarritoService {
                     throw new RuntimeException(ERROR_PELICULA_NO_ENCONTRADA);
                 }
 
-                // Buscar o crear un carrito activo
-                Carrito carrito = obtenerOCrearCarritoActivo(em);
+                // Buscar o crear un carrito activo para el usuario
+                Carrito carrito = obtenerOCrearCarritoActivo(em, usuarioId);
 
                 carrito.agregarPelicula(pelicula, 1); // Cantidad por defecto = 1
                 // Si el carrito es nuevo fue persistido en obtenerOCrearCarritoActivo; si no, merge
@@ -81,9 +82,10 @@ public class CarritoService {
         }
     }
 
-    private Carrito obtenerOCrearCarritoActivo(jakarta.persistence.EntityManager em) {
-        // Por simplicidad, buscamos el primer carrito disponible
-        var carritos = em.createQuery("FROM Carrito ORDER BY fechaCreacion DESC", Carrito.class)
+    private Carrito obtenerOCrearCarritoActivo(jakarta.persistence.EntityManager em, String usuarioId) {
+        // Buscar el carrito del usuario específico
+        var carritos = em.createQuery("FROM Carrito WHERE usuarioId = :usuarioId ORDER BY fechaCreacion DESC", Carrito.class)
+            .setParameter("usuarioId", usuarioId)
             .setMaxResults(1)
             .getResultList();
 
@@ -91,8 +93,8 @@ public class CarritoService {
             return carritos.get(0);
         }
 
-        // Si no hay carrito, crear uno nuevo
-        Carrito nuevoCarrito = new Carrito();
+        // Si no hay carrito, crear uno nuevo para el usuario
+        Carrito nuevoCarrito = new Carrito(usuarioId);
         em.persist(nuevoCarrito);
         return nuevoCarrito;
     }
